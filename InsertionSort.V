@@ -123,7 +123,7 @@ Proof.
 
             * intros n HSucc. simpl.
               remember (insert_sorted t_init pkt f) as sort_insert_tail.
-              (* hd_of_ta *)
+              (* hd_of_tail :: tl_of_tail is the result of inserting pkt into the initial tail, t_init. *)
               destruct sort_insert_tail as [| hd_of_tail tl_of_tail].
                 { reflexivity. }
                 { apply andb_true_intro. split.
