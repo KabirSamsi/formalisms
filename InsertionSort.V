@@ -3,23 +3,25 @@ Require Import List.
 Require Import Coq.Bool.Bool.
 Import ListNotations.
 
-(* A formalization of the insertion sort algorithm in Coq, and a mechanized proof of its correctness. *)
+(*  A formalization of the insertion sort algorithm in Coq, and a mechanized proof of its correctness.
+    Doing so without Lia makes this exercise more fundamental and requiring of intuition!
+*)
 
 
 (*  Insert element into a list of elements sorted
     by some comparator function between elements.
-    f pkt1 pkt2 returns 0 if pkt1 <= pkt2, 1 otherwise.
+    f elt1 elt2 returns 0 if elt1 <= elt2, 1 otherwise.
 *)
-Fixpoint insert_sorted {A : Type} (q : list A) (pkt : A) (f : A -> nat) := 
+Fixpoint insert_sorted {A : Type} (q : list A) (elt : A) (f : A -> nat) := 
     match q with
-    | [] => [pkt]
+    | [] => [elt]
     | h :: t =>
-        if Nat.leb (f pkt) (f h) then pkt :: q
-        else h :: (insert_sorted t pkt f)
+        if Nat.leb (f elt) (f h) then elt :: q
+        else h :: (insert_sorted t elt f)
     end.
 
 (*  Auxiliary sorting function on lists of elements with fuel.
-    f pkt1 pkt2 returns 0 if pkt1 <= pkt2, 1 otherwise.
+    f elt1 elt2 returns 0 if elt1 <= elt2, 1 otherwise.
 *)
 Fixpoint sort_aux {A : Type} (fuel : nat) (q : list A) (f : A -> nat) :=
     match fuel with
@@ -95,18 +97,18 @@ Proof.
 Qed.
 
 (* Show that inserting into a sorted list preserves sortedness. *)
-Lemma insert_preservation : forall {A : Type} (pkt : A) (f : A -> nat) (q : list A),
-    (sorted q f) = true -> sorted (insert_sorted q pkt f) f = true.
+Lemma insert_preservation : forall {A : Type} (elt : A) (f : A -> nat) (q : list A),
+    (sorted q f) = true -> sorted (insert_sorted q elt f) f = true.
 Proof.
     (* h_init :: t_init form the initial head/tail of q *)
     induction q as [| h_init t_init].
     - unfold sorted. simpl. reflexivity.
-    (* Split on structure of insertion sort – whether f pkt <= f h_init or otherwise. *)
-    - case_eq (Nat.leb (f pkt) (f h_init)); intros Hle.
+    (* Split on structure of insertion sort – whether f elt <= f h_init or otherwise. *)
+    - case_eq (Nat.leb (f elt) (f h_init)); intros Hle.
         
-        (* Here, assume f pkt <= f h_init. *)
+        (* Here, assume f elt <= f h_init. *)
         (* Split cases on length to get past fuel constraint *)
-        + intros H. simpl. unfold sorted. rewrite Hle. case_eq (length (pkt :: h_init :: t_init)).
+        + intros H. simpl. unfold sorted. rewrite Hle. case_eq (length (elt :: h_init :: t_init)).
             (* Matches base case (length 0) *)
             * simpl. intros H1. reflexivity.
             (* Matches nontrivial case that moves to list pattern matching *)
@@ -114,28 +116,28 @@ Proof.
             apply eq_add_S in H1. rewrite H1. rewrite list_length in H. exact H.
         + intros H. simpl. rewrite Hle. unfold sorted. 
         
-        (* Here, assume f pkt > f h_init. *)
+        (* Here, assume f elt > f h_init. *)
         (* Split cases on length to get past fuel constraint *)
-        case_eq (length (h_init :: insert_sorted t_init pkt f)).
+        case_eq (length (h_init :: insert_sorted t_init elt f)).
             (* Matches base case (length 0) *)
             * simpl. intros HImp. reflexivity.
             (* Matches nontrivial case that moves to list pattern matching *)
 
             * intros n HSucc. simpl.
-              remember (insert_sorted t_init pkt f) as sort_insert_tail.
-              (* hd_of_tail :: tl_of_tail is the result of inserting pkt into the initial tail, t_init. *)
+              remember (insert_sorted t_init elt f) as sort_insert_tail.
+              (* hd_of_tail :: tl_of_tail is the result of inserting elt into the initial tail, t_init. *)
               destruct sort_insert_tail as [| hd_of_tail tl_of_tail].
                 { reflexivity. }
                 { apply andb_true_intro. split.
                     {
                     (* Show that the head element <= second element *)
-                    case_eq ((Nat.leb (f hd_of_tail) (f pkt))).
+                    case_eq ((Nat.leb (f hd_of_tail) (f elt))).
                         {
                             intros H_hdpi_ge. apply Nat.leb_le.
-                            case_eq (Nat.ltb (f hd_of_tail) (f pkt)).
+                            case_eq (Nat.ltb (f hd_of_tail) (f elt)).
                             {
-                                (* Case – hd_of_tail < pkt. Here, rely on the sortedness.
-                                    Since hd_of_tail is not pkt, it was in the list before pkt was inserted.
+                                (* Case – hd_of_tail < elt. Here, rely on the sortedness.
+                                    Since hd_of_tail is not elt, it was in the list before elt was inserted.
                                     In fact, h_init and hd_of_tail should be the exact same.
                                 *)
 
@@ -150,7 +152,7 @@ Proof.
                                 }
                                 {
                                    (* Nonempty list *)
-                                   case_eq (Nat.leb (f pkt) (f t_head)).
+                                   case_eq (Nat.leb (f elt) (f t_head)).
                                    { (* element lies before tail. *)
                                         intros. rewrite H0 in Heqsort_insert_tail.
                                         apply heads_same in Heqsort_insert_tail.
@@ -167,7 +169,7 @@ Proof.
                                    }
                                 }
                             }
-                            { (* Case – hd_of_tail = pkt. Here, just use HLE. *)
+                            { (* Case – hd_of_tail = elt. Here, just use HLE. *)
                                 intros. 
                                 apply Nat.ltb_nlt in H0. apply Nat.nlt_ge in H0.
                                 apply Nat.leb_nle in Hle. apply Nat.nle_gt in Hle.
@@ -176,12 +178,12 @@ Proof.
                                 exact Hle. exact H_hdpi_ge.
                             }
                         }
-                        { (* Case – hd_of_tail > pkt. 
-                             If this happens, use transitivity that h_init <= pkt. *)
+                        { (* Case – hd_of_tail > elt. 
+                             If this happens, use transitivity that h_init <= elt. *)
                             intros H_hdpi_ge. apply Nat.leb_le.
                             apply Nat.leb_nle in H_hdpi_ge. apply Nat.nle_gt in H_hdpi_ge.
                             apply Nat.leb_nle in Hle. apply Nat.nle_gt in Hle.
-                            apply (Nat.lt_trans (f h_init) (f pkt) (f hd_of_tail)) in H_hdpi_ge.
+                            apply (Nat.lt_trans (f h_init) (f elt) (f hd_of_tail)) in H_hdpi_ge.
                             apply Nat.lt_le_incl in H_hdpi_ge. exact H_hdpi_ge. exact Hle.    
                         }                    
                     }
